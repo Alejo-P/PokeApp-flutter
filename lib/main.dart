@@ -107,88 +107,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late Future<Map<String, dynamic>>
-      _listPokemon; // Variable para almacenar la lista de pokemons
-  final TextEditingController _nombrePokemonController =
-      TextEditingController(); // Controlador para el campo de texto
-  final TextEditingController _limitesController =
-      TextEditingController(); // Controlador para el campo de texto
-  int _limit = 10; // Limite de pokemons a mostrar
-
   var frameSeleccionado = 0; // indice del frame seleccionado
   // Inicializamos la lista de pokemons
-  @override
-  void initState() {
-    super.initState();
-    _loadPokemonList();
-  }
-
-  void _loadPokemonList() {
-    setState(() {
-      _listPokemon = MyApp().getListPokemon(_limit);
-    });
-  }
-
-  void _searchPokemon(String name) async {
-    try {
-      // Obtenemos los detalles del Pokémon
-      final pokemonDetails = await MyApp().getPokemon(name);
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(pokemonDetails['name'].toUpperCase()),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.network(
-                  pokemonDetails['sprites']['front_default'] ?? '',
-                  width: 100,
-                  height: 100,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons
-                        .error); // Mostrar icono de error si no se puede cargar la imagen
-                  },
-                ),
-                const SizedBox(height: 10),
-                Text('Altura: ${pokemonDetails['height']}'),
-                Text('Peso: ${pokemonDetails['weight']}'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cerrar'),
-              ),
-            ],
-          );
-        },
-      );
-    } catch (e) {
-      // Mostrar error si el Pokémon no se encuentra
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Error'),
-            content: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.error), // Icono de error
-                Text('No se encontró el Pokémon.'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cerrar'),
-              ),
-            ],
-          );
-        },
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -210,30 +130,56 @@ class _MyHomePageState extends State<MyHomePage> {
     // En este metodo se construye la interfaz de la aplicación
     return LayoutBuilder(builder: (context, constraints) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-        ),
-        body: page,
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: frameSeleccionado,
-          onTap: (index) {
-            setState(() {
-              frameSeleccionado = index;
-            });
-          },
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.thunderstorm),
-              label: 'Pokemons',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.pets),
-              label: 'Hechos sobre gatos',
-            ),
-          ],
-        ),
-      );
-    });
+        body: Row(
+            children: [
+              SafeArea(
+                child: NavigationRail(
+                  extended: constraints.maxWidth > 600, // Extender la barra de navegación si el ancho es mayor a 600.
+                  destinations: [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.pets),
+                      label: Text(
+                        'Pokedex',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.pets),
+                      label: Text(
+                        'Cats Facts',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                  selectedIndex: frameSeleccionado, // Índice de la pestaña seleccionada.
+                  onDestinationSelected: (value) {
+                    print('selected: $value');
+                    setState(() {
+                      // Actualizar el índice de la pestaña seleccionada.
+                      frameSeleccionado = value;
+                    });
+                  },
+                ),
+              ),
+              Expanded(
+                child: Container(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  child: page, // Mostrar la página seleccionada.
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    );
   }
 }
 
