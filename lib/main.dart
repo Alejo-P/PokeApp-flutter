@@ -64,11 +64,12 @@ class MyApp extends StatelessWidget {
       'lang': lang,
     });
 
-    try{
+    try {
       // Realizamos la petición GET a la API
       final response = await http.get(url);
-      if(response.statusCode == 200){
-        final _datos = jsonDecode(response.body) as Map<String, dynamic>; // Decodificamos el JSON
+      if (response.statusCode == 200) {
+        final _datos = jsonDecode(response.body)
+            as Map<String, dynamic>; // Decodificamos el JSON
 
         // Extraer la lista de datos de "data"
         final List<String> catFacts = List<String>.from(_datos['data']);
@@ -106,6 +107,144 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  late Future<Map<String, dynamic>>
+      _listPokemon; // Variable para almacenar la lista de pokemons
+  final TextEditingController _nombrePokemonController =
+      TextEditingController(); // Controlador para el campo de texto
+  final TextEditingController _limitesController =
+      TextEditingController(); // Controlador para el campo de texto
+  int _limit = 10; // Limite de pokemons a mostrar
+
+  var frameSeleccionado = 0; // indice del frame seleccionado
+  // Inicializamos la lista de pokemons
+  @override
+  void initState() {
+    super.initState();
+    _loadPokemonList();
+  }
+
+  void _loadPokemonList() {
+    setState(() {
+      _listPokemon = MyApp().getListPokemon(_limit);
+    });
+  }
+
+  void _searchPokemon(String name) async {
+    try {
+      // Obtenemos los detalles del Pokémon
+      final pokemonDetails = await MyApp().getPokemon(name);
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text(pokemonDetails['name'].toUpperCase()),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.network(
+                  pokemonDetails['sprites']['front_default'] ?? '',
+                  width: 100,
+                  height: 100,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(Icons
+                        .error); // Mostrar icono de error si no se puede cargar la imagen
+                  },
+                ),
+                const SizedBox(height: 10),
+                Text('Altura: ${pokemonDetails['height']}'),
+                Text('Peso: ${pokemonDetails['weight']}'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      // Mostrar error si el Pokémon no se encuentra
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Error'),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error), // Icono de error
+                Text('No se encontró el Pokémon.'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget page;
+    switch (frameSeleccionado) {
+      case 0:
+        // Página de generador de palabras.
+        page = PokemonScreen();
+        break;
+      case 1:
+        // Página de favoritos.
+        page = CatFactsScreen();
+        break;
+      default:
+        // Si no se selecciona ninguna pestaña, lanzar un error.
+        throw UnimplementedError('no widget for $frameSeleccionado');
+    }
+
+    // En este metodo se construye la interfaz de la aplicación
+    return LayoutBuilder(builder: (context, constraints) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.title),
+        ),
+        body: page,
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: frameSeleccionado,
+          onTap: (index) {
+            setState(() {
+              frameSeleccionado = index;
+            });
+          },
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.thunderstorm),
+              label: 'Pokemons',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.pets),
+              label: 'Hechos sobre gatos',
+            ),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+class PokemonScreen extends StatefulWidget {
+  const PokemonScreen({super.key});
+
+  @override
+  _PokemonScreenState createState() => _PokemonScreenState();
+}
+
+class _PokemonScreenState extends State<PokemonScreen> {
   late Future<Map<String, dynamic>>
       _listPokemon; // Variable para almacenar la lista de pokemons
   final TextEditingController _nombrePokemonController =
@@ -190,17 +329,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // En este metodo se construye la interfaz de la aplicación
     return Scaffold(
-      // Scaffold es un widget que implementa la estructura visual básica de la aplicación
       appBar: AppBar(
-        // AppBar es un widget que implementa la barra superior de la aplicación
-        backgroundColor: Theme.of(context)
-            .colorScheme
-            .inversePrimary, // Color de fondo de la barra superior
-        title: Text(widget.title), // Título de la barra superior
+        title: const Text('Pokedex'),
       ),
-      body: Column(
+      body: Row(
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
