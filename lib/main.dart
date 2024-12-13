@@ -11,7 +11,8 @@ class MyApp extends StatelessWidget {
 
   // LLamada a la API para obtener la lista de pokemons
   Future<Map<String, dynamic>> getListPokemon(int limit) async {
-    final urlList = Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=$limit'); // URL de la API
+    final urlList = Uri.parse(
+        'https://pokeapi.co/api/v2/pokemon?limit=$limit'); // URL de la API
     try {
       final response =
           await http.get(urlList); // Realizamos la petición GET a la API
@@ -27,7 +28,8 @@ class MyApp extends StatelessWidget {
 
   // Llamada a la API para obtener los datos de un pokemon
   Future<Map<String, dynamic>> getPokemon(String name) async {
-    final urlPokemon = Uri.parse('https://pokeapi.co/api/v2/pokemon/$name'); // URL de la API
+    final urlPokemon =
+        Uri.parse('https://pokeapi.co/api/v2/pokemon/$name'); // URL de la API
     try {
       final response =
           await http.get(urlPokemon); // Realizamos la petición GET a la API
@@ -44,7 +46,8 @@ class MyApp extends StatelessWidget {
   // Obtener un pokemon por url
   Future<Map<String, dynamic>> getPokemonByUrl(String url) async {
     try {
-      final response = await http.get(Uri.parse(url)); // Realizamos la petición GET a la API
+      final response =
+          await http.get(Uri.parse(url)); // Realizamos la petición GET a la API
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
@@ -110,12 +113,15 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  late Future<Map<String, dynamic>> _listPokemon; // Variable para almacenar la lista de pokemons
-  final TextEditingController _nombrePokemonController = TextEditingController(); // Controlador para el campo de texto
-  final TextEditingController _limitesController = TextEditingController(); // Controlador para el campo de texto
+  late Future<Map<String, dynamic>>
+      _listPokemon; // Variable para almacenar la lista de pokemons
+  final TextEditingController _nombrePokemonController =
+      TextEditingController(); // Controlador para el campo de texto
+  final TextEditingController _limitesController =
+      TextEditingController(); // Controlador para el campo de texto
   int _limit = 10; // Limite de pokemons a mostrar
 
-  // Inicializamos la lista de pokemons 
+  // Inicializamos la lista de pokemons
   @override
   void initState() {
     super.initState();
@@ -145,7 +151,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   width: 100,
                   height: 100,
                   errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.error); // Mostrar icono de error si no se puede cargar la imagen
+                    return const Icon(Icons
+                        .error); // Mostrar icono de error si no se puede cargar la imagen
                   },
                 ),
                 const SizedBox(height: 10),
@@ -191,9 +198,13 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     // En este metodo se construye la interfaz de la aplicación
-    return Scaffold( // Scaffold es un widget que implementa la estructura visual básica de la aplicación
-      appBar: AppBar( // AppBar es un widget que implementa la barra superior de la aplicación
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary, // Color de fondo de la barra superior
+    return Scaffold(
+      // Scaffold es un widget que implementa la estructura visual básica de la aplicación
+      appBar: AppBar(
+        // AppBar es un widget que implementa la barra superior de la aplicación
+        backgroundColor: Theme.of(context)
+            .colorScheme
+            .inversePrimary, // Color de fondo de la barra superior
         title: Text(widget.title), // Título de la barra superior
       ),
       body: Column(
@@ -214,7 +225,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 IconButton(
                   icon: const Icon(Icons.search),
                   onPressed: () {
-                    final searchTerm = _nombrePokemonController.text.trim().toLowerCase();
+                    final searchTerm =
+                        _nombrePokemonController.text.trim().toLowerCase();
                     if (searchTerm.isNotEmpty) {
                       _searchPokemon(searchTerm);
                     }
@@ -240,7 +252,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 IconButton(
                   icon: const Icon(Icons.refresh),
                   onPressed: () {
-                    final newLimit = int.tryParse(_limitesController.text.trim());
+                    final newLimit =
+                        int.tryParse(_limitesController.text.trim());
                     if (newLimit != null && newLimit > 0) {
                       setState(() {
                         _limit = newLimit;
@@ -269,7 +282,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     itemBuilder: (context, index) {
                       final pokemon = results[index];
                       return ListTile(
-                        title: Text(pokemon['name']),
+                        title: Text('${index + 1}: ${pokemon["name"]}'),
                         onTap: () async {
                           final pokemonDetails =
                               await MyApp().getPokemonByUrl(pokemon['url']);
@@ -277,16 +290,20 @@ class _MyHomePageState extends State<MyHomePage> {
                             context: context,
                             builder: (context) {
                               return AlertDialog(
-                                title: Text(pokemonDetails['name']),
+                                title: Text(pokemonDetails['name'].toUpperCase()),
                                 content: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Image.network(
-                                      pokemonDetails['sprites']['front_default'] ?? '',
+                                      pokemonDetails['sprites']
+                                              ['front_default'] ??
+                                          '',
                                       width: 100,
                                       height: 100,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return const Text('No se pudo cargar la imagen');
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                        return const Text(
+                                            'No se pudo cargar la imagen');
                                       },
                                     ),
                                     const SizedBox(height: 10),
