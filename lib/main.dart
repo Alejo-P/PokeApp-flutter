@@ -58,6 +58,30 @@ class MyApp extends StatelessWidget {
     }
   }
 
+  Future<List<String>> getCatFacts(int count, String lang) async {
+    final url = Uri.https('meowfacts.herokuapp.com', '/', {
+      'count': '$count',
+      'lang': lang,
+    });
+
+    try{
+      // Realizamos la petición GET a la API
+      final response = await http.get(url);
+      if(response.statusCode == 200){
+        final _datos = jsonDecode(response.body) as Map<String, dynamic>; // Decodificamos el JSON
+
+        // Extraer la lista de datos de "data"
+        final List<String> catFacts = List<String>.from(_datos['data']);
+        // Retornar los datos
+        return catFacts;
+      } else {
+        throw Exception('Error al obtener los datos: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to load data: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -71,41 +95,10 @@ class MyApp extends StatelessWidget {
       home: const MyHomePage(title: 'Pokedex'),
     );
   }
-
-  // Método para mostrar un diálogo con un mensaje
-  // void _showDialog(BuildContext context, String message) {
-  //   showDialog(
-  //     context: context,
-  //     builder: (BuildContext context) {
-  //       return AlertDialog(
-  //         title: const Text('Message'),
-  //         content: Text(message),
-  //         actions: <Widget>[
-  //           TextButton(
-  //             onPressed: () {
-  //               Navigator.of(context).pop();
-  //             },
-  //             child: const Text('OK'),
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
 }
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
   final String title;
 
   @override
@@ -290,7 +283,8 @@ class _MyHomePageState extends State<MyHomePage> {
                             context: context,
                             builder: (context) {
                               return AlertDialog(
-                                title: Text(pokemonDetails['name'].toUpperCase()),
+                                title:
+                                    Text(pokemonDetails['name'].toUpperCase()),
                                 content: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -332,6 +326,56 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class CatFactsScreen extends StatefulWidget {
+  const CatFactsScreen({super.key});
+
+  @override
+  _CatFactsScreenState createState() => _CatFactsScreenState();
+}
+
+class _CatFactsScreenState extends State<CatFactsScreen> {
+  late Future<List<String>> _catFacts;
+
+  @override
+  void initState() {
+    super.initState();
+    // Llamamos al método para obtener los hechos sobre gatos
+    _catFacts = MyApp().getCatFacts(10, 'es'); // Obtener 10 hechos en español
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Hechos sobre Gatos'),
+      ),
+      body: FutureBuilder<List<String>>(
+        future: _catFacts,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator()); // Cargando
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}')); // Error
+          } else if (snapshot.hasData) {
+            final facts = snapshot.data!; // Datos obtenidos
+            return ListView.builder(
+              itemCount: facts.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(facts[index]), // Mostramos cada hecho
+                  leading: const Icon(Icons.pets), // Ícono decorativo
+                );
+              },
+            );
+          } else {
+            return const Center(child: Text('No se encontraron datos.'));
+          }
+        },
       ),
     );
   }
