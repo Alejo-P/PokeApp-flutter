@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http; // Para realizar peticiones HTTP
+import 'dart:convert'; // Para decodificar el JSON
 
 void main() {
   runApp(const MyApp());
@@ -7,33 +9,86 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
+  // LLamada a la API para obtener la lista de pokemons
+  Future<Map<String, dynamic>> getListPokemon(int limit) async {
+    final urlList = Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=$limit'); // URL de la API
+    try {
+      final response =
+          await http.get(urlList); // Realizamos la petición GET a la API
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to load data');
+      }
+    } catch (e) {
+      return <String, dynamic>{'results': []};
+    }
+  }
+
+  // Llamada a la API para obtener los datos de un pokemon
+  Future<Map<String, dynamic>> getPokemon(String name) async {
+    final urlPokemon = Uri.parse('https://pokeapi.co/api/v2/pokemon/$name'); // URL de la API
+    try {
+      final response =
+          await http.get(urlPokemon); // Realizamos la petición GET a la API
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to load data');
+      }
+    } catch (e) {
+      throw Exception('Failed to load data');
+    }
+  }
+
+  // Obtener un pokemon por url
+  Future<Map<String, dynamic>> getPokemonByUrl(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url)); // Realizamos la petición GET a la API
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Failed to load data');
+      }
+    } catch (e) {
+      throw Exception('Failed to load data');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Pokedex',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+        primarySwatch: Colors.red,
+        colorScheme: ColorScheme.fromSwatch(
+          primarySwatch: Colors.red,
+        ).copyWith(secondary: Colors.red),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Pokedex'),
     );
   }
+
+  // Método para mostrar un diálogo con un mensaje
+  // void _showDialog(BuildContext context, String message) {
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         title: const Text('Message'),
+  //         content: Text(message),
+  //         actions: <Widget>[
+  //           TextButton(
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //             },
+  //             child: const Text('OK'),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 }
 
 class MyHomePage extends StatefulWidget {
@@ -55,71 +110,212 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  late Future<Map<String, dynamic>> _listPokemon; // Variable para almacenar la lista de pokemons
+  final TextEditingController _nombrePokemonController = TextEditingController(); // Controlador para el campo de texto
+  final TextEditingController _limitesController = TextEditingController(); // Controlador para el campo de texto
+  int _limit = 10; // Limite de pokemons a mostrar
 
-  void _incrementCounter() {
+  // Inicializamos la lista de pokemons 
+  @override
+  void initState() {
+    super.initState();
+    _loadPokemonList();
+  }
+
+  void _loadPokemonList() {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _listPokemon = MyApp().getListPokemon(_limit);
     });
+  }
+
+  void _searchPokemon(String name) async {
+    try {
+      // Obtenemos los detalles del Pokémon
+      final pokemonDetails = await MyApp().getPokemon(name);
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text(pokemonDetails['name'].toUpperCase()),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.network(
+                  pokemonDetails['sprites']['front_default'] ?? '',
+                  width: 100,
+                  height: 100,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(Icons.error); // Mostrar icono de error si no se puede cargar la imagen
+                  },
+                ),
+                const SizedBox(height: 10),
+                Text('Altura: ${pokemonDetails['height']}'),
+                Text('Peso: ${pokemonDetails['weight']}'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          );
+        },
+      );
+    } catch (e) {
+      // Mostrar error si el Pokémon no se encuentra
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Error'),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.error), // Icono de error
+                Text('No se encontró el Pokémon.'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          );
+        },
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+    // En este metodo se construye la interfaz de la aplicación
+    return Scaffold( // Scaffold es un widget que implementa la estructura visual básica de la aplicación
+      appBar: AppBar( // AppBar es un widget que implementa la barra superior de la aplicación
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary, // Color de fondo de la barra superior
+        title: Text(widget.title), // Título de la barra superior
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _nombrePokemonController,
+                    decoration: const InputDecoration(
+                      labelText: 'Buscar Pokémon',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: () {
+                    final searchTerm = _nombrePokemonController.text.trim().toLowerCase();
+                    if (searchTerm.isNotEmpty) {
+                      _searchPokemon(searchTerm);
+                    }
+                  },
+                ),
+              ],
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _limitesController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Número de Pokémon a listar',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () {
+                    final newLimit = int.tryParse(_limitesController.text.trim());
+                    if (newLimit != null && newLimit > 0) {
+                      setState(() {
+                        _limit = newLimit;
+                      });
+                      _loadPokemonList();
+                    }
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: FutureBuilder<Map<String, dynamic>>(
+              future: _listPokemon,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else if (snapshot.hasData) {
+                  final pokemonData = snapshot.data!;
+                  final results = pokemonData['results'] as List;
+
+                  return ListView.builder(
+                    itemCount: results.length,
+                    itemBuilder: (context, index) {
+                      final pokemon = results[index];
+                      return ListTile(
+                        title: Text(pokemon['name']),
+                        onTap: () async {
+                          final pokemonDetails =
+                              await MyApp().getPokemonByUrl(pokemon['url']);
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: Text(pokemonDetails['name']),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Image.network(
+                                      pokemonDetails['sprites']['front_default'] ?? '',
+                                      width: 100,
+                                      height: 100,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return const Text('No se pudo cargar la imagen');
+                                      },
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Text('Altura: ${pokemonDetails['height']}'),
+                                    Text('Peso: ${pokemonDetails['weight']}'),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(),
+                                    child: const Text('Cerrar'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
+                } else {
+                  return const Center(child: Text('No se encontraron datos.'));
+                }
+              },
+            ),
+          ),
+        ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
