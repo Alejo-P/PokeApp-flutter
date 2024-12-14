@@ -6,55 +6,36 @@ void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class PokemonService {
+  final http.Client client;
 
-  // LLamada a la API para obtener la lista de pokemons
+  PokemonService(this.client);
+
   Future<Map<String, dynamic>> getListPokemon(int limit) async {
-    final urlList = Uri.parse(
-        'https://pokeapi.co/api/v2/pokemon?limit=$limit'); // URL de la API
+    final url = Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=$limit');
     try {
-      final response =
-          await http.get(urlList); // Realizamos la petición GET a la API
+      final response = await client.get(url);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        throw Exception('Failed to load data');
+        throw Exception('Error al obtener la lista de Pokémon');
       }
     } catch (e) {
-      return <String, dynamic>{'results': []};
+      return {'results': []};
     }
   }
 
-  // Llamada a la API para obtener los datos de un pokemon
   Future<Map<String, dynamic>> getPokemon(String name) async {
-    final urlPokemon =
-        Uri.parse('https://pokeapi.co/api/v2/pokemon/$name'); // URL de la API
+    final url = Uri.parse('https://pokeapi.co/api/v2/pokemon/$name');
     try {
-      final response =
-          await http.get(urlPokemon); // Realizamos la petición GET a la API
+      final response = await client.get(url);
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        throw Exception('Failed to load data');
+        throw Exception('Error al obtener datos del Pokémon');
       }
     } catch (e) {
-      throw Exception('Failed to load data');
-    }
-  }
-
-  // Obtener un pokemon por url
-  Future<Map<String, dynamic>> getPokemonByUrl(String url) async {
-    try {
-      final response =
-          await http.get(Uri.parse(url)); // Realizamos la petición GET a la API
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Failed to load data');
-      }
-    } catch (e) {
-      throw Exception('Failed to load data');
+      throw Exception('Error al obtener datos del Pokémon: $e');
     }
   }
 
@@ -65,16 +46,10 @@ class MyApp extends StatelessWidget {
     });
 
     try {
-      // Realizamos la petición GET a la API
-      final response = await http.get(url);
+      final response = await client.get(url);
       if (response.statusCode == 200) {
-        final _datos = jsonDecode(response.body)
-            as Map<String, dynamic>; // Decodificamos el JSON
-
-        // Extraer la lista de datos de "data"
-        final List<String> catFacts = List<String>.from(_datos['data']);
-        // Retornar los datos
-        return catFacts;
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return List<String>.from(data['data']);
       } else {
         throw Exception('Error al obtener los datos: ${response.statusCode}');
       }
@@ -82,6 +57,10 @@ class MyApp extends StatelessWidget {
       throw Exception('Failed to load data: $e');
     }
   }
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -89,9 +68,6 @@ class MyApp extends StatelessWidget {
       title: 'Pokedex',
       theme: ThemeData(
         primarySwatch: Colors.red,
-        colorScheme: ColorScheme.fromSwatch(
-          primarySwatch: Colors.red,
-        ).copyWith(secondary: Colors.red),
       ),
       home: const MyHomePage(title: 'Pokedex'),
     );
@@ -107,79 +83,54 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  var frameSeleccionado = 0; // indice del frame seleccionado
-  // Inicializamos la lista de pokemons
+  int selectedFrame = 0;
 
   @override
   Widget build(BuildContext context) {
     Widget page;
-    switch (frameSeleccionado) {
+    switch (selectedFrame) {
       case 0:
-        // Página de generador de palabras.
         page = PokemonScreen();
         break;
       case 1:
-        // Página de favoritos.
         page = CatFactsScreen();
         break;
       default:
-        // Si no se selecciona ninguna pestaña, lanzar un error.
-        throw UnimplementedError('no widget for $frameSeleccionado');
+        throw UnimplementedError('No widget for $selectedFrame');
     }
 
-    // En este metodo se construye la interfaz de la aplicación
     return LayoutBuilder(builder: (context, constraints) {
       return Scaffold(
         body: Row(
-            children: [
-              SafeArea(
-                child: NavigationRail(
-                  extended: constraints.maxWidth > 600, // Extender la barra de navegación si el ancho es mayor a 600.
-                  destinations: [
-                    NavigationRailDestination(
-                      icon: Icon(Icons.pets),
-                      label: Text(
-                        'Pokedex',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    NavigationRailDestination(
-                      icon: Icon(Icons.pets),
-                      label: Text(
-                        'Cats Facts',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontFamily: 'Roboto',
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                  selectedIndex: frameSeleccionado, // Índice de la pestaña seleccionada.
-                  onDestinationSelected: (value) {
-                    print('selected: $value');
-                    setState(() {
-                      // Actualizar el índice de la pestaña seleccionada.
-                      frameSeleccionado = value;
-                    });
-                  },
-                ),
+          children: [
+            SafeArea(
+              child: NavigationRail(
+                extended: constraints.maxWidth > 600,
+                destinations: const [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.pets),
+                    label: Text('Pokedex'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.info),
+                    label: Text('Cat Facts'),
+                  ),
+                ],
+                selectedIndex: selectedFrame,
+                onDestinationSelected: (value) {
+                  setState(() {
+                    selectedFrame = value;
+                  });
+                },
               ),
-              Expanded(
-                child: Container(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  child: page, // Mostrar la página seleccionada.
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-    );
+            ),
+            Expanded(
+              child: page,
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -191,86 +142,79 @@ class PokemonScreen extends StatefulWidget {
 }
 
 class _PokemonScreenState extends State<PokemonScreen> {
-  late Future<Map<String, dynamic>>
-      _listPokemon; // Variable para almacenar la lista de pokemons
-  final TextEditingController _nombrePokemonController =
-      TextEditingController(); // Controlador para el campo de texto
-  final TextEditingController _limitesController =
-      TextEditingController(); // Controlador para el campo de texto
-  int _limit = 10; // Limite de pokemons a mostrar
+  late Future<Map<String, dynamic>> _pokemonListFuture;
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _limitController = TextEditingController();
+  int _limit = 10;
+  final PokemonService _pokemonService = PokemonService(http.Client());
 
-  // Inicializamos la lista de pokemons
   @override
   void initState() {
     super.initState();
     _loadPokemonList();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _limitController.dispose();
+    super.dispose();
+  }
+
   void _loadPokemonList() {
     setState(() {
-      _listPokemon = MyApp().getListPokemon(_limit);
+      _pokemonListFuture = _pokemonService.getListPokemon(_limit);
     });
   }
 
   void _searchPokemon(String name) async {
     try {
-      // Obtenemos los detalles del Pokémon
-      final pokemonDetails = await MyApp().getPokemon(name);
+      final pokemonDetails = await _pokemonService.getPokemon(name);
       showDialog(
         context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(pokemonDetails['name'].toUpperCase()),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.network(
-                  pokemonDetails['sprites']['front_default'] ?? '',
-                  width: 100,
-                  height: 100,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons
-                        .error); // Mostrar icono de error si no se puede cargar la imagen
-                  },
-                ),
-                const SizedBox(height: 10),
-                Text('Altura: ${pokemonDetails['height']}'),
-                Text('Peso: ${pokemonDetails['weight']}'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cerrar'),
+        builder: (context) => AlertDialog(
+          title: Text(pokemonDetails['name'].toUpperCase()),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.network(
+                pokemonDetails['sprites']['front_default'] ?? '',
+                width: 100,
+                height: 100,
+                errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
               ),
+              const SizedBox(height: 10),
+              Text('Altura: ${pokemonDetails['height']}'),
+              Text('Peso: ${pokemonDetails['weight']}'),
             ],
-          );
-        },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cerrar'),
+            ),
+          ],
+        ),
       );
     } catch (e) {
-      // Mostrar error si el Pokémon no se encuentra
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Error'),
-            content: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.error), // Icono de error
-                Text('No se encontró el Pokémon.'),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Cerrar'),
-              ),
-            ],
-          );
-        },
-      );
+      _showError('No se encontró el Pokémon.');
     }
+  }
+
+  void _showError(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -279,7 +223,7 @@ class _PokemonScreenState extends State<PokemonScreen> {
       appBar: AppBar(
         title: const Text('Pokedex'),
       ),
-      body: Row(
+      body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -287,7 +231,7 @@ class _PokemonScreenState extends State<PokemonScreen> {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _nombrePokemonController,
+                    controller: _searchController,
                     decoration: const InputDecoration(
                       labelText: 'Buscar Pokémon',
                       border: OutlineInputBorder(),
@@ -297,8 +241,7 @@ class _PokemonScreenState extends State<PokemonScreen> {
                 IconButton(
                   icon: const Icon(Icons.search),
                   onPressed: () {
-                    final searchTerm =
-                        _nombrePokemonController.text.trim().toLowerCase();
+                    final searchTerm = _searchController.text.trim().toLowerCase();
                     if (searchTerm.isNotEmpty) {
                       _searchPokemon(searchTerm);
                     }
@@ -313,7 +256,7 @@ class _PokemonScreenState extends State<PokemonScreen> {
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _limitesController,
+                    controller: _limitController,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       labelText: 'Número de Pokémon a listar',
@@ -324,8 +267,7 @@ class _PokemonScreenState extends State<PokemonScreen> {
                 IconButton(
                   icon: const Icon(Icons.refresh),
                   onPressed: () {
-                    final newLimit =
-                        int.tryParse(_limitesController.text.trim());
+                    final newLimit = int.tryParse(_limitController.text.trim());
                     if (newLimit != null && newLimit > 0) {
                       setState(() {
                         _limit = newLimit;
@@ -339,15 +281,18 @@ class _PokemonScreenState extends State<PokemonScreen> {
           ),
           Expanded(
             child: FutureBuilder<Map<String, dynamic>>(
-              future: _listPokemon,
+              future: _pokemonListFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 } else if (snapshot.hasData) {
-                  final pokemonData = snapshot.data!;
-                  final results = pokemonData['results'] as List;
+                  final results = snapshot.data!['results'] as List;
+
+                  if (results.isEmpty) {
+                    return const Center(child: Text('No se encontraron Pokémon.'));
+                  }
 
                   return ListView.builder(
                     itemCount: results.length,
@@ -355,46 +300,7 @@ class _PokemonScreenState extends State<PokemonScreen> {
                       final pokemon = results[index];
                       return ListTile(
                         title: Text('${index + 1}: ${pokemon["name"]}'),
-                        onTap: () async {
-                          final pokemonDetails =
-                              await MyApp().getPokemonByUrl(pokemon['url']);
-                          showDialog(
-                            context: context,
-                            builder: (context) {
-                              return AlertDialog(
-                                title:
-                                    Text(pokemonDetails['name'].toUpperCase()),
-                                content: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Image.network(
-                                      pokemonDetails['sprites']
-                                              ['front_default'] ??
-                                          '',
-                                      width: 100,
-                                      height: 100,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                        return const Text(
-                                            'No se pudo cargar la imagen');
-                                      },
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Text('Altura: ${pokemonDetails['height']}'),
-                                    Text('Peso: ${pokemonDetails['weight']}'),
-                                  ],
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(),
-                                    child: const Text('Cerrar'),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        },
+                        onTap: () => _searchPokemon(pokemon['name']),
                       );
                     },
                   );
@@ -418,13 +324,13 @@ class CatFactsScreen extends StatefulWidget {
 }
 
 class _CatFactsScreenState extends State<CatFactsScreen> {
-  late Future<List<String>> _catFacts;
+  late Future<List<String>> _catFactsFuture;
+  final PokemonService _pokemonService = PokemonService(http.Client());
 
   @override
   void initState() {
     super.initState();
-    // Llamamos al método para obtener los hechos sobre gatos
-    _catFacts = MyApp().getCatFacts(10, 'es'); // Obtener 10 hechos en español
+    _catFactsFuture = _pokemonService.getCatFacts(10, 'esp'); // 10 hechos en español
   }
 
   @override
@@ -434,22 +340,21 @@ class _CatFactsScreenState extends State<CatFactsScreen> {
         title: const Text('Hechos sobre Gatos'),
       ),
       body: FutureBuilder<List<String>>(
-        future: _catFacts,
+        future: _catFactsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator()); // Cargando
+            return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}')); // Error
+            return Center(child: Text('Error: ${snapshot.error}'));
           } else if (snapshot.hasData) {
-            final facts = snapshot.data!; // Datos obtenidos
+            final facts = snapshot.data!;
+
             return ListView.builder(
               itemCount: facts.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(facts[index]), // Mostramos cada hecho
-                  leading: const Icon(Icons.pets), // Ícono decorativo
-                );
-              },
+              itemBuilder: (context, index) => ListTile(
+                title: Text(facts[index]),
+                leading: const Icon(Icons.pets),
+              ),
             );
           } else {
             return const Center(child: Text('No se encontraron datos.'));
